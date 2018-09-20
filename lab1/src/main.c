@@ -69,8 +69,7 @@ uint16_t Tim3_PrescalerValue,Tim4_PrescalerValue;
 
 __IO uint16_t Tim4_CCR; // the pulse of the TIM4
 
-int isRed=0;
-int ledOn=0;
+int ledState=0; //used to switch LED states
 
 
 //for using LCD
@@ -365,8 +364,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)   //see  stm32l4xx_h
 
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32l4xx_hal_tim.c for different callback function names. 
 {																																//for timer4 
-	//	if ((*htim).Instance==TIM4)
-		if (isRed==0){
+//	if ((*htim).Instance==TIM4)
+	switch (ledState)
+	{
+		case 0:
+		{
+			BSP_LED_Toggle(LED4);
+			ledState=1;
+		}
+		case 1:
+		{
+			BSP_LED_Toggle(LED4);
+			ledState=2;
+		}
+		case 2:
+		{
+			BSP_LED_Toggle(LED5);
+			ledState=3;
+		}
+		case 3:
+		{	
+			BSP_LED_Toggle(LED5);
+			ledState=0;
+		}
+	}
+		/*if (isRed==0){
 			if (ledOn==1) {
 				isRed=1; 
 				ledOn=0;
@@ -387,10 +409,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32l4xx_
 				BSP_LED_Toggle(LED5);
 				ledOn=1;
 			}
-		}
-		
-		BSP_LED_Toggle(LED4);	
-		BSP_LED_Toggle(LED5);
+		}*/
 		
 		//clear the timer counter!  in stm32f4xx_hal_tim.c, the counter is not cleared after  OC interrupt
 		__HAL_TIM_SET_COUNTER(htim, 0x0000);   //this maro is defined in stm32l4xx_hal_tim.h
