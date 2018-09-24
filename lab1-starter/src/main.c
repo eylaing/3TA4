@@ -140,7 +140,8 @@ int main(void)
 	 
   //EXTI0_Config();
 
-	TIM3_Config();
+	//TIM3_Config();
+	TIM2_Config();
 	
 	TIM4_Config();
 	
