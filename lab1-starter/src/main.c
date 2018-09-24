@@ -66,17 +66,16 @@ this starter project:
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-TIM_HandleTypeDef    Tim3_Handle,Tim4_Handle;
+TIM_HandleTypeDef    Tim2_Handle,Tim3_Handle,Tim4_Handle;
 TIM_OC_InitTypeDef Tim4_OCInitStructure;
+uint32_t Tim2_PrescalerValue;
 uint16_t Tim3_PrescalerValue,Tim4_PrescalerValue;
 
 __IO uint16_t Tim4_CCR; // the pulse of the TIM4
 __O uint8_t factor = 0;
-int isRed=0;
-int ledOn=0;
 
 enum ledState {redOn = 0, redOff = 1, greenOn = 2, greenOff = 3}; 
-enum ledState led = redOff;
+enum ledState led = redOn;
 
 
 //for using LCD
@@ -90,6 +89,7 @@ DigitPosition_Typedef charPosition;
 void SystemClock_Config(void);
 static void EXTI0_Config(void);
 static void Error_Handler(void);
+void TIM2_Config(void);
 void TIM3_Config(void);
 void TIM4_Config(void);
 void TIM4_OC_Config(void);
@@ -144,7 +144,7 @@ int main(void)
 	TIM4_Config();
 	
 	Tim4_CCR=5000;       //2 s to fire an interrupt.
-	TIM4_OC_Config();
+
 
 	//BSP_LCD_GLASS_ScrollSentence(uint8_t* ptr, uint16_t nScroll, uint16_t ScrollSpeed);
 		BSP_LCD_GLASS_ScrollSentence((uint8_t*) "  mt3ta4 lab1 starter", 2, 200);
@@ -250,6 +250,58 @@ static void EXTI0_Config(void)
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 */
+
+void  TIM2_Config(void)
+{
+
+		/* -----------------------------------------------------------------------
+    Tim2 is of 32 bits. Timer 2..7 is on APB1.
+		
+	BELOW - copied from TIM3_Config
+		Since the clock source is MSI, and the clock range is RCC_MSIRANGE_6, SystemCoreClock=4Mhz.
+	
+		Since RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1, HCLK=4Mhz.
+	
+		Since RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1, PCLK1=4MHz, and TIM3CLK=4Mhz.
+		(if the APB1 prescaler is not 1, the timer clock frequency will be 2 times of APB1 frequency)
+	
+		 that is, for current RCC config, the the Timer3 frequency=SystemCoreClock.
+	
+		To get TIM3's counter clock at 10 KHz, for example, the Prescaler is computed as following:
+    Prescaler = (TIM3CLK / TIM3 counter clock) - 1
+	
+		i.e: Prescaler = (SystemCoreClock /10 KHz) - 1
+       
+  ----------------------------------------------------------------------- */  
+  
+  /* Compute the prescaler value to have TIM3 counter clock equal to 10 KHz */
+  Tim2_PrescalerValue = (uint32_t) (SystemCoreClock/ 10000) - 1;
+  
+  /* Set TIM3 instance */
+  Tim2_Handle.Instance = TIM2; //TIM3 is defined in stm32f429xx.h
+ 
+  Tim3_Handle.Init.Period = 5000 - 1;
+  Tim3_Handle.Init.Prescaler = Tim2_PrescalerValue;
+  Tim3_Handle.Init.ClockDivision = 0;
+  Tim3_Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
+  if(HAL_TIM_Base_Init(&Tim2_Handle) != HAL_OK) // this line need to call the callback function _MspInit() in stm32f4xx_hal_msp.c to set up peripheral clock and NVIC..
+  {
+    /* Initialization Error */
+    Error_Handler();
+  }
+  
+  /*##-2- Start the TIM Base generation in interrupt mode ####################*/
+  /* Start Channel1 */
+  if(HAL_TIM_Base_Start_IT(&Tim2_Handle) != HAL_OK)   //the TIM_XXX_Start_IT function enable IT, and also enable Timer
+																											//so do not need HAL_TIM_BASE_Start() any more.
+  {
+    /* Starting Error */
+    Error_Handler();
+  }
+	
+	
+	
+}
 
 void  TIM3_Config(void)
 {
@@ -366,6 +418,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							BSP_LCD_GLASS_Clear();
 							BSP_LCD_GLASS_DisplayString((uint8_t*)"select");		
 
+							TIM4_OC_Config();
+
+			
 							factor = (factor+1)%2;
 							__HAL_TIM_SET_COMPARE(&Tim4_Handle, TIM_CHANNEL_1, Tim4_CCR/(factor+1));
 							break;	
@@ -420,29 +475,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32fxx_h
 {																																//for timer4 
 	//	if ((*htim).Instance==TIM4)
 			 //BSP_LED_Toggle(LED4);
-	/*if (isRed==0){
-			if (ledOn==1) {
-				isRed=1; 
-				ledOn=0;
-				BSP_LED_Toggle(LED4);
-			}
-			else{
-				BSP_LED_Toggle(LED4);
-				ledOn=1;
-			}
-		}
-		else if (isRed==1){
-			if (ledOn==1) {
-				isRed=0; 
-				ledOn=0;
-				BSP_LED_Toggle(LED5);
-			}
-			else{
-				BSP_LED_Toggle(LED5);
-				ledOn=1;
-			}
-		}*/
-	
 	
 	switch (led)
 	{
