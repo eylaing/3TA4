@@ -76,6 +76,7 @@ __O uint8_t factor = 0;
 
 enum ledState {redOn = 0, redOff = 1, greenOn = 2, greenOff = 3}; 
 enum ledState led = redOn;
+uint8_t justGreen = 1;
 
 
 //for using LCD
@@ -143,8 +144,8 @@ int main(void)
 	
 	TIM4_Config();
 	
-	Tim4_CCR=5000;       //2 s to fire an interrupt.
-
+	Tim4_CCR=20000;       //2 s to fire an interrupt.
+	TIM4_OC_Config();
 
 	//BSP_LCD_GLASS_ScrollSentence(uint8_t* ptr, uint16_t nScroll, uint16_t ScrollSpeed);
 		BSP_LCD_GLASS_ScrollSentence((uint8_t*) "  mt3ta4 lab1 starter", 2, 200);
@@ -410,6 +411,7 @@ void  TIM4_OC_Config(void)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	
   switch (GPIO_Pin) {
 			case GPIO_PIN_0: 		 //SEL_JOY_PIN    			
 							/* Toggle LED4 */
@@ -418,10 +420,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							BSP_LCD_GLASS_Clear();
 							BSP_LCD_GLASS_DisplayString((uint8_t*)"select");		
 
+							justGreen = (justGreen+1)%2;
+							if (justGreen == 0)
+							{
+								Tim4_CCR = 5000;
+								BSP_LED_Off(LED4);
+								BSP_LED_Off(LED5);
+								led=redOn;
+							}
+							else if (justGreen == 1)
+							{
+								Tim4_CCR = 20000;
+								BSP_LED_Off(LED4);
+								BSP_LED_Off(LED5);
+							}
+							
 							TIM4_OC_Config();
 
 			
-							factor = (factor+1)%2;
+							//factor = (factor+1)%2;
 							__HAL_TIM_SET_COMPARE(&Tim4_Handle, TIM_CHANNEL_1, Tim4_CCR/(factor+1));
 							break;	
 			case GPIO_PIN_1: //LEFT_JOY_PIN  
@@ -474,33 +491,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)   //see  stm32fxx_ha
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32fxx_hal_tim.c for different callback function names. 
 {																																//for timer4 
 	//	if ((*htim).Instance==TIM4)
-			 //BSP_LED_Toggle(LED4);
-	
-	switch (led)
+	if (justGreen == 1)
 	{
-		case redOn:
+		BSP_LED_Toggle(LED5);
+	}
+	
+	else if (justGreen ==0)
+	{
+		switch (led)
 		{
-			BSP_LED_Toggle(LED4);
-			led=1;
-			break;
-		}
-		case redOff:
-		{
-			BSP_LED_Toggle(LED4);
-			led=2;
-			break;
-		}
-		case greenOn:
-		{
-			BSP_LED_Toggle(LED5);
-			led=3;
-			break;
-		}
-		case greenOff:
-		{	
-			BSP_LED_Toggle(LED5);
-			led=0;
-			break;
+			case redOn:
+			{
+				BSP_LED_Toggle(LED4);
+				led=1;
+				break;
+			}
+			case redOff:
+			{
+				BSP_LED_Toggle(LED4);
+				led=2;
+				break;
+			}
+			case greenOn:
+			{
+				BSP_LED_Toggle(LED5);
+				led=3;
+				break;
+			}
+			case greenOff:
+			{	
+				BSP_LED_Toggle(LED5);
+				led=0;
+				break;
+			}
 		}
 	}
 		
