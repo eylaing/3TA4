@@ -79,6 +79,7 @@ __IO uint16_t memLocation = 0x000A; //pick any location within range
 char lcd_buffer[6];    // LCD display buffer
 char timestring[10]={0};  //   
 char datestring[6]={0};
+uint8_t timedate[50]={0};
 
 
 uint8_t wd, dd, mo, yy, ss, mm, hh; // for weekday, day, month, year, second, minute, hour
@@ -94,6 +95,9 @@ static void Error_Handler(void);
 
 void RTC_Config(void);
 void RTC_AlarmAConfig(void);
+void RTC_TimeShow(void);
+void RTC_DateDisplay(void);
+void RTC_SavePressTime(void);
 
 
 /* Private functions ---------------------------------------------------------*/
@@ -123,9 +127,7 @@ int main(void)
 	selpressed=0;
 	sel_held=0;
 	
-
 	HAL_Init();
-	
 	BSP_LED_Init(LED4);
 	BSP_LED_Init(LED5);
   
@@ -139,16 +141,13 @@ int main(void)
 	BSP_LCD_GLASS_DisplayString((uint8_t*)"MT3TA4");	
 	HAL_Delay(1000);
 
-
-//configure real-time clock
+	//configure real-time clock
 	RTC_Config();
 	RTC_AlarmAConfig();
 	
 	I2C_Init(&pI2c_Handle);
 
 /**********************Testing I2C EEPROM------------------
-//Just for testing, won't have to modify this 
-	//the following variables are for testging I2C_EEPROM
 	uint8_t data1 =0x67,  data2=0x68;
 	uint8_t readData=0x00;
 	uint16_t EE_status;
@@ -209,13 +208,13 @@ int main(void)
 					SEL_Pressed_StartTick=HAL_GetTick(); 
 					while(BSP_JOY_GetState() == JOY_SEL) {  //while the selection button is pressed)	
 						if ((HAL_GetTick()-SEL_Pressed_StartTick)>800) {							
-							BSP_LCD_GLASS_Clear();
-							BSP_LCD_GLASS_DisplayString((uint8_t*)"HOLD");
-							//Need to configure way to get out of this
+							RTC_AlarmA_IT_Disable(&RTCHandle);
+							RTC_DateDisplay();
 						} 
 					}
 					BSP_LCD_GLASS_Clear();
-			}					
+			}		
+			RTC_AlarmA_IT_Enable(&RTCHandle);
 //==============================================================			
 
 //==============================================================					
@@ -555,8 +554,55 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
   BSP_LED_Toggle(LED5);
-	//RTC_TimeShow();
+	RTC_TimeShow();
 	
+}
+
+void RTC_TimeShow(void)
+{
+	BSP_LCD_GLASS_Clear();
+	RTC_DateTypeDef sdatestructureget;
+  RTC_TimeTypeDef stimestructureget;
+  
+  /* Get the RTC current Time */
+  HAL_RTC_GetTime(&RTCHandle, &stimestructureget, RTC_FORMAT_BIN);
+  /* Get the RTC current Date */
+  HAL_RTC_GetDate(&RTCHandle, &sdatestructureget, RTC_FORMAT_BIN);
+  /* Display time Format : hh:mm:ss */
+  //sprintf((char*)timedate,"%02d:%02d:%02d",stimestructureget.Hours, stimestructureget.Minutes, stimestructureget.Seconds);
+	//Format: mm:ss
+	sprintf((char*)timedate,"%d:%d:%d",stimestructureget.Hours, stimestructureget.Minutes, stimestructureget.Seconds);
+	BSP_LCD_GLASS_DisplayString((uint8_t*)timedate);
+}
+
+void RTC_DateDisplay(void)
+{
+	BSP_LCD_GLASS_Clear();
+	RTC_DateTypeDef sdatestructureget;
+  RTC_TimeTypeDef stimestructureget;
+	
+  /* Get the RTC current Time */
+  HAL_RTC_GetTime(&RTCHandle, &stimestructureget, RTC_FORMAT_BIN);
+  /* Get the RTC current Date */
+  HAL_RTC_GetDate(&RTCHandle, &sdatestructureget, RTC_FORMAT_BIN);
+	//Format: weekday:day:month:year
+	//***Something's getting fucked up with how it's saved/retrieved-not sure if types are right?
+	sprintf((char*)timedate," D%d:M%d:Y%02d",sdatestructureget.Date, sdatestructureget.Month, sdatestructureget.Year);
+	BSP_LCD_GLASS_ScrollSentence((uint8_t*)timedate,1,400);
+}
+
+void RTC_SavePressTime(void)
+{
+	//use this for saving current time to EEPROM - will need to implement with pushbutton
+	RTC_DateTypeDef sdatestructureget;
+  RTC_TimeTypeDef stimestructureget;
+	
+  /* Get the RTC current Time */
+  HAL_RTC_GetTime(&RTCHandle, &stimestructureget, RTC_FORMAT_BIN);
+  /* Get the RTC current Date */
+  HAL_RTC_GetDate(&RTCHandle, &sdatestructureget, RTC_FORMAT_BIN);
+	
+	//What format to save data into EEPROM??
 }
 
 static void Error_Handler(void)
