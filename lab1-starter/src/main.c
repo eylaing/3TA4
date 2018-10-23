@@ -140,6 +140,7 @@ int main(void)
 	 
   //EXTI0_Config();
 
+	//USE TIM2 INSTEAD OF TIM3
 	//TIM3_Config();
 	TIM2_Config();
 	
@@ -148,10 +149,7 @@ int main(void)
 	Tim4_CCR=20000;       //2 s to fire an interrupt.
 	TIM4_OC_Config();
 
-	//BSP_LCD_GLASS_ScrollSentence(uint8_t* ptr, uint16_t nScroll, uint16_t ScrollSpeed);
 		BSP_LCD_GLASS_ScrollSentence((uint8_t*) "  mt3ta4 lab1 starter", 2, 200);
-	//BSP_LCD_GLASS_DisplayString((uint8_t*)"MT3TA4");	
-	//BSP_LCD_GLASS_DisplayChar(&aChar, singlePoint, doublePoint, charPosition);
 
   /* Infinite loop */
   while (1)
@@ -258,25 +256,11 @@ void  TIM2_Config(void)
 
 		/* -----------------------------------------------------------------------
     Tim2 is of 32 bits. Timer 2..7 is on APB1.
-		
-	BELOW - copied from TIM3_Config
-		Since the clock source is MSI, and the clock range is RCC_MSIRANGE_6, SystemCoreClock=4Mhz.
-	
-		Since RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1, HCLK=4Mhz.
-	
-		Since RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1, PCLK1=4MHz, and TIM3CLK=4Mhz.
-		(if the APB1 prescaler is not 1, the timer clock frequency will be 2 times of APB1 frequency)
-	
-		 that is, for current RCC config, the the Timer3 frequency=SystemCoreClock.
-	
-		To get TIM3's counter clock at 10 KHz, for example, the Prescaler is computed as following:
-    Prescaler = (TIM3CLK / TIM3 counter clock) - 1
-	
-		i.e: Prescaler = (SystemCoreClock /10 KHz) - 1
        
   ----------------------------------------------------------------------- */  
   
   /* Compute the prescaler value to have TIM3 counter clock equal to 10 KHz */
+	//Prescaler needs to be 32bits as TIM2 is 32bit timer
   Tim2_PrescalerValue = (uint32_t) (SystemCoreClock/ 10000) - 1;
   
   /* Set TIM3 instance */
@@ -421,24 +405,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							BSP_LCD_GLASS_Clear();
 							BSP_LCD_GLASS_DisplayString((uint8_t*)"select");		
 
-							justGreen = (justGreen+1)%2;
-							if (justGreen == 0)
+							justGreen = (justGreen+1)%2; //change the mode
+							if (justGreen == 0) //Both LEDs toggle blinking
 							{
-								Tim4_CCR = 5000;
-								BSP_LED_Off(LED4);
+								Tim4_CCR = 5000; //Fires every 1/2 second
+								BSP_LED_Off(LED4); //Set them both to off to ensure clean start to mode
 								BSP_LED_Off(LED5);
-								led=redOn;
+								led=redOn; //Starting state of toggle so switch case works properly
 							}
-							else if (justGreen == 1)
+							else if (justGreen == 1) //just green LED is blinking
 							{
-								Tim4_CCR = 20000;
-								BSP_LED_Off(LED4);
+								Tim4_CCR = 20000; //Fires every 2 seconds
+								BSP_LED_Off(LED4); //Again, making sure LEDs are both off to start
 								BSP_LED_Off(LED5);
 							}
 							
-							TIM4_OC_Config();
+							TIM4_OC_Config(); //Reconfigures the timer based on above if/else block CCR values
 
-			
+							//Comment out factor, want pressing the button to change the mode not the frequency
 							//factor = (factor+1)%2;
 							__HAL_TIM_SET_COMPARE(&Tim4_Handle, TIM_CHANNEL_1, Tim4_CCR/(factor+1));
 							break;	
@@ -492,13 +476,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)   //see  stm32fxx_ha
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32fxx_hal_tim.c for different callback function names. 
 {																																//for timer4 
 	//	if ((*htim).Instance==TIM4)
-	if (justGreen == 1)
+	if (justGreen == 1) //Just green LED should blink
 	{
 		BSP_LED_Toggle(LED5);
 	}
 	
-	else if (justGreen ==0)
+	else if (justGreen ==0) //LEDs should be toggling
 	{
+		/* Use variable 'led' to store the state of the LEDs - toggle based on which state it's in */
 		switch (led)
 		{
 			case redOn:

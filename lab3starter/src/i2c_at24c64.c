@@ -1,5 +1,5 @@
 #include "i2c_at24c64.h"
-
+//SHOULDN'T HAVE TO MODIFY JUST READ FUNCTIONS
 /******************Robert Li *****************
 This library file is for STM32L476g-doscovery board working with AT24c64 EEPROM
 1. the stm32l476_discovery.c file has some library functions for I2Cx, but there is no byte write and no byte read functions for I2C1

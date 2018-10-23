@@ -120,6 +120,7 @@ void HAL_TIM_Base_MspInit (TIM_HandleTypeDef *htim)
 {
   /*##-1- Enable peripherals and GPIO Clocks #################################*/
   /* TIMx Peripheral clock enable */
+	//Added in TIM2 enable to allow for use of TIM2 instead of TIM3
  
 __HAL_RCC_TIM3_CLK_ENABLE(); //this is defined in stm32f4xx_hal_rcc.h
 __HAL_RCC_TIM2_CLK_ENABLE();	

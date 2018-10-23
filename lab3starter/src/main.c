@@ -69,7 +69,7 @@ RTC_HandleTypeDef RTCHandle;
 RTC_DateTypeDef RTC_DateStructure;
 RTC_TimeTypeDef RTC_TimeStructure;
 
-__IO HAL_StatusTypeDef Hal_status;  //HAL_ERROR, HAL_TIMEOUT, HAL_OK, of HAL_BUSY 
+__IO HAL_StatusTypeDef Hal_status;  //HAL_ERROR, HAL_TIMEOUT, HAL_OK, or HAL_BUSY 
 
 //memory location to write to in the device
 __IO uint16_t memLocation = 0x000A; //pick any location within range
@@ -131,12 +131,9 @@ int main(void)
   
 	SystemClock_Config();   
 											
-	
 	HAL_InitTick(0x0000); //set the systick interrupt priority to the highest, !!!This line need to be after systemClock_config()
 
-	
 	BSP_LCD_GLASS_Init();
-	
 	BSP_JOY_Init(JOY_MODE_EXTI);
 
 	BSP_LCD_GLASS_DisplayString((uint8_t*)"MT3TA4");	
@@ -145,81 +142,65 @@ int main(void)
 
 //configure real-time clock
 	RTC_Config();
-	
 	RTC_AlarmAConfig();
 	
 	I2C_Init(&pI2c_Handle);
 
-
-//*********************Testing I2C EEPROM------------------
-
+/**********************Testing I2C EEPROM------------------
+//Just for testing, won't have to modify this 
 	//the following variables are for testging I2C_EEPROM
 	uint8_t data1 =0x67,  data2=0x68;
 	uint8_t readData=0x00;
 	uint16_t EE_status;
 
-
+	//TEST 1 - Write data1
 	EE_status=I2C_ByteWrite(&pI2c_Handle,EEPROM_ADDRESS, memLocation, data1);
-
-  
   if(EE_status != HAL_OK)
   {
     I2C_Error(&pI2c_Handle);
   }
-	
-	
 	BSP_LCD_GLASS_Clear();
 	if (EE_status==HAL_OK) {
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"w 1 ok");
 	}else
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"w 1 X");
-
 	HAL_Delay(1000);
 	
+	//TEST 2 - Write data2
 	EE_status=I2C_ByteWrite(&pI2c_Handle,EEPROM_ADDRESS, memLocation+1 , data2);
-	
   if(EE_status != HAL_OK)
   {
     I2C_Error(&pI2c_Handle);
   }
-	
 	BSP_LCD_GLASS_Clear();
 	if (EE_status==HAL_OK) {
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"w 2 ok");
 	}else
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"w 2 X");
-
 	HAL_Delay(1000);
 	
+	//TEST 3 - Read data1
 	readData=I2C_ByteRead(&pI2c_Handle,EEPROM_ADDRESS, memLocation);
-
 	BSP_LCD_GLASS_Clear();
 	if (data1 == readData) {
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"r 1 ok");;
 	}else{
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"r 1 X");
 	}	
-	
 	HAL_Delay(1000);
 	
+	//TEST 4 - Read data2
 	readData=I2C_ByteRead(&pI2c_Handle,EEPROM_ADDRESS, memLocation+1);
-
 	BSP_LCD_GLASS_Clear();
 	if (data2 == readData) {
 			BSP_LCD_GLASS_DisplayString((uint8_t*)"r 2 ok");;
 	}else{
 			BSP_LCD_GLASS_DisplayString((uint8_t *)"r 2 X");
 	}	
+	HAL_Delay(1000);		
+*/
 
-	HAL_Delay(1000);
-	
-
-
-//******************************testing I2C EEPROM*****************************	
-		
-
-  /* Infinite loop */
-  while (1)
+  while (1) //actual code to modify
   {
 			//the joystick is pulled down. so the default status of the joystick is 0, when pressed, get status of 1. 
 			//while the interrupt is configured at the falling edge---the moment the pressing is released, the interrupt is triggered.
@@ -227,9 +208,13 @@ int main(void)
 			if (BSP_JOY_GetState() == JOY_SEL) {
 					SEL_Pressed_StartTick=HAL_GetTick(); 
 					while(BSP_JOY_GetState() == JOY_SEL) {  //while the selection button is pressed)	
-						if ((HAL_GetTick()-SEL_Pressed_StartTick)>800) {					
+						if ((HAL_GetTick()-SEL_Pressed_StartTick)>800) {							
+							BSP_LCD_GLASS_Clear();
+							BSP_LCD_GLASS_DisplayString((uint8_t*)"HOLD");
+							//Need to configure way to get out of this
 						} 
 					}
+					BSP_LCD_GLASS_Clear();
 			}					
 //==============================================================			
 
@@ -352,7 +337,6 @@ void SystemClock_Config(void)
 }
 //after RCC configuration, for timmer 2---7, which are one APB1, the TIMxCLK from RCC is 4MHz
 
-
 void RTC_Config(void) {
 	RTC_TimeTypeDef RTC_TimeStructure;
 	RTC_DateTypeDef RTC_DateStructure;
@@ -371,32 +355,26 @@ void RTC_Config(void) {
 			//1.4: Enable RTC Clock
 			__HAL_RCC_RTC_ENABLE();   //enable RTC --see note for the Macro in _hal_rcc.h---using this Marco requires 
 																//the above three lines.
-			
-	
+
 			//1.5  Enable LSI
 			__HAL_RCC_LSI_ENABLE();   //need to enable the LSI !!!
 																//defined in _rcc.c
 			while (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)==RESET) {}    //defind in rcc.c
-	
 			// for the above steps, please see the CubeHal UM1725, p616, section "Backup Domain Access" 	
-				
-				
-				
+					
 	//****2.*****  Configure the RTC Prescaler (Asynchronous and Synchronous) and RTC hour 
         
-		
-		/************students: need to complete the following lines******************************
-		//**************************************************************************************				
-				RTCHandle.Instance = ???;
-				RTCHandle.Init.HourFormat = ???;
+		//***********students: need to complete the following lines******************************
+				RTCHandle.Instance = RTC;
+				RTCHandle.Init.HourFormat = RTC_HOURFORMAT_24;
 				
-				RTCHandle.Init.AsynchPrediv = ???; 
-				RTCHandle.Init.SynchPrediv = ???; 
+				RTCHandle.Init.AsynchPrediv = 0x7F; 
+				RTCHandle.Init.SynchPrediv = 0xFF; 
 				
 				
-				RTCHandle.Init.OutPut = ???;
-				RTCHandle.Init.OutPutPolarity = ???;
-				RTCHandle.Init.OutPutType = ???;
+				RTCHandle.Init.OutPut = RTC_OUTPUT_DISABLE;
+				RTCHandle.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+				RTCHandle.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
 				
 			
 				if(HAL_RTC_Init(&RTCHandle) != HAL_OK)
@@ -404,19 +382,15 @@ void RTC_Config(void) {
 					BSP_LCD_GLASS_Clear(); 
 					BSP_LCD_GLASS_DisplayString((uint8_t *)"RT I X"); 	
 				}
-	******************************************************************************************/
-	
-	
 	
 	//****3.***** init the time and date
 				
 				
- 		/*****************Students: please complete the following lnes*****************************
-		//****************************************************************************************		
-				RTC_DateStructure.Year = ???
-				RTC_DateStructure.Month = ???
-				RTC_DateStructure.Date = ???
-				RTC_DateStructure.WeekDay = ???
+ 		//*****************Students: please complete the following lnes*****************************
+				RTC_DateStructure.Year = 0x18;
+				RTC_DateStructure.Month = RTC_MONTH_OCTOBER;
+				RTC_DateStructure.Date = 0x23;
+				RTC_DateStructure.WeekDay = RTC_WEEKDAY_TUESDAY;
 				
 				if(HAL_RTC_SetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN) != HAL_OK)   //BIN format is better 
 															//before, must set in BCD format and read in BIN format!!
@@ -426,12 +400,12 @@ void RTC_Config(void) {
 				} 
   
   
-				RTC_TimeStructure.Hours = ???;  
-				RTC_TimeStructure.Minutes = ??? 
-				RTC_TimeStructure.Seconds = ???
-				RTC_TimeStructure.TimeFormat = ???
-				RTC_TimeStructure.DayLightSaving = ???
-				RTC_TimeStructure.StoreOperation = ???
+				RTC_TimeStructure.Hours = 0x01;  
+				RTC_TimeStructure.Minutes = 0x02; 
+				RTC_TimeStructure.Seconds = 0x00;
+				RTC_TimeStructure.TimeFormat = RTC_HOURFORMAT12_AM;
+				RTC_TimeStructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+				RTC_TimeStructure.StoreOperation = RTC_STOREOPERATION_RESET;
 				
 				if(HAL_RTC_SetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN) != HAL_OK)   //BIN format is better
 																																					//before, must set in BCD format and read in BIN format!!
@@ -439,11 +413,6 @@ void RTC_Config(void) {
 					BSP_LCD_GLASS_Clear();
 					BSP_LCD_GLASS_DisplayString((uint8_t *)"T I X");
 				}	
-	  
- ********************************************************************************/
-
-
-
 				
 			__HAL_RTC_TAMPER1_DISABLE(&RTCHandle);
 			__HAL_RTC_TAMPER2_DISABLE(&RTCHandle);	
@@ -472,15 +441,11 @@ void RTC_AlarmAConfig(void)
 {
 	RTC_AlarmTypeDef RTC_Alarm_Structure;
 
-	//**************students:  you need to set the followint two lines****************
-	/********************************************************************************
+	//**************students:  you need to set the following two lines****************
 	
-	RTC_Alarm_Structure.Alarm = ????
-  RTC_Alarm_Structure.AlarmMask = ?????
-	
-	
-	********************************************************************************/			
-  
+	RTC_Alarm_Structure.Alarm = RTC_ALARM_A;
+  RTC_Alarm_Structure.AlarmMask = RTC_ALARMMASK_ALL;
+	  
   if(HAL_RTC_SetAlarm_IT(&RTCHandle,&RTC_Alarm_Structure,RTC_FORMAT_BCD) != HAL_OK)
   {
 			BSP_LCD_GLASS_Clear(); 
@@ -602,9 +567,6 @@ static void Error_Handler(void)
   {
   }
 }
-
-
-
 
 #ifdef  USE_FULL_ASSERT
 

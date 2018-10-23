@@ -27,21 +27,22 @@ Project File Date:  09/18/2018
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'stm32L476DISCO'
-compiling stm32l4xx_it.c...
+compiling stm32l4xx_hal_msp.c...
 compiling main.c...
 src\main.c(121): warning:  #177-D: variable "aChar"  was declared but never referenced
   	uint8_t aChar='a';
-src\main.c(507): warning:  #188-D: enumerated type mixed with another type
+src\main.c(492): warning:  #188-D: enumerated type mixed with another type
   				led=1;
-src\main.c(513): warning:  #188-D: enumerated type mixed with another type
+src\main.c(498): warning:  #188-D: enumerated type mixed with another type
   				led=2;
-src\main.c(519): warning:  #188-D: enumerated type mixed with another type
+src\main.c(504): warning:  #188-D: enumerated type mixed with another type
   				led=3;
-src\main.c(525): warning:  #188-D: enumerated type mixed with another type
+src\main.c(510): warning:  #188-D: enumerated type mixed with another type
   				led=0;
 src\main.c(91): warning:  #177-D: function "EXTI0_Config"  was declared but never referenced
   static void EXTI0_Config(void);
 src\main.c: 6 warnings, 0 errors
+compiling stm32l4xx_it.c...
 linking...
 Program Size: Code=10424 RO-data=580 RW-data=56 ZI-data=1312  
 FromELF: creating hex file...
@@ -57,18 +58,18 @@ Package Vendor: ARM
 
 Package Vendor: Keil
                 http://www.keil.com/pack/Keil.MDK-Middleware.7.7.0.pack
-                ::Board Support:Buttons:1.0.0 (API)
+                ::Board Support:LED:1.0.0 (API)
                 Middleware for Keil MDK-Professional and MDK-Plus
-   * Component: Buttons Version: 1.0.0
    * Component: LED Version: 1.0.0
+   * Component: Buttons Version: 1.0.0
 
 Package Vendor: Keil
                 http://www.keil.com/pack/Keil.STM32L4xx_DFP.1.4.0.pack
                 Keil::Device:Startup:1.2.0
                 STMicroelectronics STM32L4 Series Device Support, Drivers and Examples
    * Component: Startup Version: 1.2.0
-   * Component: Buttons Version: 1.0.0
    * Component: LED Version: 1.0.0
+   * Component: Buttons Version: 1.0.0
 
 <h2>Collection of Component include folders:</h2>
   .\RTE\_stm32L476DISCO
@@ -80,22 +81,22 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE:5.1.2
 
-   * Component: ::Board Support:Buttons:1.0.0 (API)
-      Include file:  Board\Board_Buttons.h
-
    * Component: ::Board Support:LED:1.0.0 (API)
       Include file:  Board\Board_LED.h
+
+   * Component: ::Board Support:Buttons:1.0.0 (API)
+      Include file:  Board\Board_Buttons.h
 
    * Component: Keil::Device:Startup:1.2.0
       Source file:   Device\Source\ARM\startup_stm32l476xx.s
       Source file:   Device\Source\system_stm32l4xx.c
 
-   * Component: Keil.STM32L476G-EVAL::Board Support:Buttons:1.0.0
-      Source file:   Boards\ST\STM32L476G-EVAL\Common\Buttons_STM32L476G-EVAL.c
-
    * Component: Keil.STM32L476G-EVAL::Board Support:LED:1.0.0
       Source file:   Boards\ST\STM32L476G-EVAL\Common\LED_STM32L476G-EVAL.c
-Build Time Elapsed:  00:00:06
+
+   * Component: Keil.STM32L476G-EVAL::Board Support:Buttons:1.0.0
+      Source file:   Boards\ST\STM32L476G-EVAL\Common\Buttons_STM32L476G-EVAL.c
+Build Time Elapsed:  00:00:10
 </pre>
 </body>
 </html>

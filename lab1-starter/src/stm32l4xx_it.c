@@ -227,6 +227,7 @@ void TIM4_IRQHandler(void)
   HAL_TIM_IRQHandler(&Tim4_Handle);
 }
 
+//adding a handler for TIM2 to use it as the timer
 void TIM2_IRQHandler(void)
 {
 	HAL_TIM_IRQHandler(&Tim2_Handle);
