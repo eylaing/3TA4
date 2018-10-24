@@ -243,8 +243,6 @@ void TAMP_STAMP_IRQHandler(void)
 	
 }
 
-
-
 /**
   * @}
   */
