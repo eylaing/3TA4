@@ -216,7 +216,16 @@ void EXTI9_5_IRQHandler (void)
 
 void EXTI15_10_IRQHandler (void)
 {
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);  //PE14
+	//**THIS IS THE INTERRUPT HANDLER FOR LINES 10-15
+	//HOW TO CALL HAL HANDLER BASED ON WHI PIN FIRED INTERRUPT??
+	
+	int pin13 = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_13);
+	if(pin13==1){ //PE13 has been fired
+		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
+	}
+	else { //if not 13, must be 14
+		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);  //PE14
+	}
 }
 
 void TIM3_IRQHandler(void)

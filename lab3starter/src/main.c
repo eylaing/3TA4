@@ -80,9 +80,10 @@ char lcd_buffer[6];    // LCD display buffer
 char timestring[10]={0};  //   
 char datestring[6]={0};
 uint8_t timedate[50]={0};
-uint8_t SP=0;
+uint8_t SP=1;
 uint8_t dsmode = 0;
 uint8_t state = 0;
+uint8_t dtpressed = 0;
 enum Setting {YEAR=0, MONTH=1, WDAY=2, DAY=3, HOUR=4, MIN=5, SEC=6};
 
 uint8_t wd, dd, mo, yy, ss, mm, hh; // for weekday, day, month, year, second, minute, hour
@@ -133,7 +134,6 @@ int main(void)
 	downpressed=0;
 	selpressed=0;
 	sel_held=0;
-	SP=0;
 	enum Setting dtSetting = -1;
 	
 	HAL_Init();
@@ -156,6 +156,15 @@ int main(void)
 	RTC_AlarmAConfig();
 	
 	I2C_Init(&pI2c_Handle);
+
+	//I2C_ByteWrite(&pI2c_Handle,EEPROM_ADDRESS, memLocation, 1); //used to reset SP in testing
+	//HAL_Delay(10);
+	
+	//Retrieve SP from EEPROM after a restart
+	SP=I2C_ByteRead(&pI2c_Handle,EEPROM_ADDRESS, memLocation);
+	HAL_Delay(10);
+
+
 
 /**********************Testing I2C EEPROM------------------
 	uint8_t data1 =0x67,  data2=0x68;
@@ -218,7 +227,7 @@ int main(void)
 			if (BSP_JOY_GetState() == JOY_SEL) {
 					SEL_Pressed_StartTick=HAL_GetTick(); 
 					while(BSP_JOY_GetState() == JOY_SEL) {  //while the selection button is pressed)	
-						if ((HAL_GetTick()-SEL_Pressed_StartTick)>800) {							
+						if ((HAL_GetTick()-SEL_Pressed_StartTick)>1000) {							
 							RTC_AlarmA_IT_Disable(&RTCHandle);
 							RTC_DateDisplay();
 						} 
@@ -226,13 +235,10 @@ int main(void)
 					RTC_AlarmA_IT_Enable(&RTCHandle);
 			}		
 			
-			if (selpressed==1)  {
-					selpressed=0;
-			} 
+			if (selpressed==1)  {selpressed=0;} 
+			if (uppressed==1) {uppressed=0;}
+			if (downpressed==1) {downpressed=0;}
 			
-			if (uppressed==1) {
-					uppressed=0;
-			}
 			if (pbpressed==1) { //Save to EEPROM
 					RTC_SavePressTime();
 					RTC_AlarmA_IT_Enable(&RTCHandle);
@@ -257,9 +263,13 @@ int main(void)
 					leftpressed=0;
 			}			
 			
-			if (rightpressed==1) { 
+			if (dtpressed==1) {
 				BSP_LCD_GLASS_DisplayString((uint8_t*) "DSMODE");
 				dsmode=1;
+			}
+			
+			if (rightpressed==1) { 
+
 				rightpressed=0;
 			}
 		}
@@ -356,9 +366,13 @@ int main(void)
 			}
 			if (rightpressed==1) 
 			{
-				dsmode=0; //turn off DateSet Mode
-				RTC_AlarmA_IT_Enable(&RTCHandle);
 				rightpressed=0;
+			}
+			if (dtpressed==1)
+			{
+				dsmode=0;
+				RTC_AlarmA_IT_Enable(&RTCHandle);
+				dtpressed=0;
 			}
 		}
 	}
@@ -446,7 +460,6 @@ void SystemClock_Config(void)
   // Disable Power Control clock   //why disable it?
   __HAL_RCC_PWR_CLK_DISABLE();      
 }
-//after RCC configuration, for timmer 2---7, which are one APB1, the TIMxCLK from RCC is 4MHz
 
 void RTC_Config(void) {
 	RTC_TimeTypeDef RTC_TimeStructure;
@@ -640,24 +653,26 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						leftpressed=1;
 						break;
 			case GPIO_PIN_2:    //right button
-						BSP_LCD_GLASS_Clear();
-						RTC_AlarmA_IT_Disable(&RTCHandle);
+						//BSP_LCD_GLASS_Clear();
 						rightpressed=1;			
 						break;
 			case GPIO_PIN_3:    //up button							
-						BSP_LCD_GLASS_Clear();
-						BSP_LCD_GLASS_DisplayString((uint8_t*)"up");
 						uppressed=1;
 							break;
 			case GPIO_PIN_5:    //down button						
-						BSP_LCD_GLASS_Clear();
-						BSP_LCD_GLASS_DisplayString((uint8_t*)"down");
+						downpressed=1;
 						break;
 			case GPIO_PIN_14:   //external pushbutton 	
 						RTC_AlarmA_IT_Disable(&RTCHandle);
 						BSP_LCD_GLASS_Clear();
 						pbpressed=1;
-						break;			
+						break;
+			case GPIO_PIN_13:
+						RTC_AlarmA_IT_Disable(&RTCHandle);
+						BSP_LED_Toggle(LED4);
+						BSP_LCD_GLASS_Clear();
+						dtpressed=1;
+						break;
 			default://
 						//default
 						break;
@@ -748,6 +763,8 @@ void EEPROM_SaveTime(uint8_t hour, uint8_t min, uint8_t sec)
 	I2C_ByteWrite(&pI2c_Handle, EEPROM_ADDRESS, memLocation+SP+2, sec);
 	HAL_Delay(500); //longer to display the 'SAVING' long enough for user to read
 	SP +=3;
+	I2C_ByteWrite(&pI2c_Handle, EEPROM_ADDRESS, memLocation, SP);
+	HAL_Delay(10);
 }
 
 void EEPROM_ReadTime(uint8_t SPoffset)
@@ -770,7 +787,17 @@ void Pushbutton_Init(void)
 	//Enable clock
 	__HAL_RCC_GPIOE_CLK_ENABLE();
 	
-	//Configure pins
+	//Configure pin 13
+	GPIO_InitTypeDef GPIO13_InitStruct;
+
+	GPIO13_InitStruct.Pin = GPIO_PIN_13; //set pin
+	GPIO13_InitStruct.Mode = GPIO_MODE_IT_FALLING; //change to input
+	GPIO13_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO13_InitStruct.Pull = GPIO_PULLDOWN; 
+	
+	HAL_GPIO_Init(GPIOE, &GPIO13_InitStruct);
+	
+	//Configure pin 14
 	GPIO_InitTypeDef GPIO_InitStruct;
 
 	GPIO_InitStruct.Pin = GPIO_PIN_14; //set pin
