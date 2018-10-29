@@ -134,6 +134,9 @@ int main(void)
 	downpressed=0;
 	selpressed=0;
 	sel_held=0;
+	dtpressed=0;
+	pbpressed=0;
+	dsmode=0;
 	enum Setting dtSetting = -1;
 	
 	HAL_Init();
@@ -263,9 +266,11 @@ int main(void)
 					leftpressed=0;
 			}			
 			
-			if (dtpressed==1) {
-				BSP_LCD_GLASS_DisplayString((uint8_t*) "DSMODE");
+			if (dtpressed==1) { //Enter dateset mode
 				dsmode=1;
+				dtpressed=0;
+				BSP_LCD_GLASS_DisplayString((uint8_t*) "DSMODE");
+				HAL_Delay(1000);
 			}
 			
 			if (rightpressed==1) { 
@@ -276,7 +281,7 @@ int main(void)
 
 		else if(dsmode==1) //In dateset mode
 		{
-			if (selpressed==1) //select was pressed - increment current setting
+			if (selpressed==1) //up was pressed - increment current setting
 			{
 				switch(dtSetting) {
 					case YEAR: 
@@ -356,7 +361,87 @@ int main(void)
 				selpressed=0;
 			}
 		
-			if (uppressed==1) {uppressed=0;} //ignore in DS mode
+			if (downpressed==1) //down was pressed - increment current setting
+			{
+				switch(dtSetting) {
+					case YEAR: 
+					{
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_DateStructure.Year--;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d", RTC_DateStructure.Year);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);					
+						break;
+					}
+					case MONTH:
+					{
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_DateStructure.Month--;
+						if(RTC_DateStructure.Month>12) RTC_DateStructure.Month = 0;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d", RTC_DateStructure.Month);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						break;
+					}
+					case WDAY:
+					{
+						
+						break;
+					}
+					case DAY:
+					{
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_DateStructure.Date--;
+						if(RTC_DateStructure.Date>31) RTC_DateStructure.Date = 0;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d", RTC_DateStructure.Date);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						break;
+					}
+					case HOUR:
+					{							
+						HAL_RTC_GetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_TimeStructure.Hours--;
+						if(RTC_TimeStructure.Hours>24) RTC_TimeStructure.Hours = 0;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d",RTC_TimeStructure.Hours);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						break;
+					}	
+					case MIN:
+					{
+						HAL_RTC_GetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_TimeStructure.Minutes--;
+						if(RTC_TimeStructure.Minutes>=60) RTC_TimeStructure.Minutes = 0;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d",RTC_TimeStructure.Minutes);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						break;
+					}
+					case SEC:
+					{
+						HAL_RTC_GetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						HAL_RTC_GetDate(&RTCHandle,&RTC_DateStructure,RTC_FORMAT_BIN);
+						RTC_TimeStructure.Seconds--;
+						if(RTC_TimeStructure.Seconds>=60) RTC_TimeStructure.Seconds = 0;
+						BSP_LCD_GLASS_Clear();
+						sprintf((char*)timedate,"%d",RTC_TimeStructure.Seconds);
+						BSP_LCD_GLASS_DisplayString(timedate);
+						HAL_RTC_SetTime(&RTCHandle,&RTC_TimeStructure,RTC_FORMAT_BIN);
+						break;
+					}
+				}
+				downpressed=0;
+			}
+			
+			//if (selpressed==1) {selpressed=0;} //ignore in DS mode
 			if (leftpressed==1) 
 			{
 				dtSetting++; //go to next setting
@@ -366,6 +451,9 @@ int main(void)
 			}
 			if (rightpressed==1) 
 			{
+				if (dtSetting==0){dtSetting=6;}
+				else {dtSetting--;} //go to previous setting
+				Display_Curr_Setting(dtSetting);
 				rightpressed=0;
 			}
 			if (dtpressed==1)
@@ -668,10 +756,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						pbpressed=1;
 						break;
 			case GPIO_PIN_13:
-						RTC_AlarmA_IT_Disable(&RTCHandle);
-						BSP_LED_Toggle(LED4);
-						BSP_LCD_GLASS_Clear();
-						dtpressed=1;
+					RTC_AlarmA_IT_Disable(&RTCHandle);
+					//HAL_Delay(1000);
+					//BSP_LED_Toggle(LED4);
+					if (dsmode==1){dsmode=0;}
+					else if (dsmode==0) {dsmode=1;}
+					dtpressed=1;
 						break;
 			default://
 						//default
@@ -687,6 +777,7 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 
 void Display_Curr_Setting(enum Setting SET)
 {
+	BSP_LCD_GLASS_Clear();
 	switch (SET) {
 		case YEAR: BSP_LCD_GLASS_DisplayString((uint8_t*)" YEAR");
 			break;
