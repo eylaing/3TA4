@@ -61,18 +61,15 @@ __IO HAL_StatusTypeDef Hal_status;  //HAL_ERROR, HAL_TIMEOUT, HAL_OK, of HAL_BUS
 
 ADC_HandleTypeDef    Adc_Handle;
 
-TIM_HandleTypeDef    Tim3_Handle, Tim4_Handle;
+TIM_HandleTypeDef    Tim3_Handle, Tim4_Handle; //using TIM4 for PWM output
 TIM_OC_InitTypeDef Tim3_OCInitStructure, Tim4_OCInitStructure;
-
+uint16_t Tim4_PrescalerValue;
 
 __IO uint16_t ADC1ConvertedValue;   //if declare it as 16t, it will not work.
-
 
 volatile double  setPoint=23.5;
 
 double measuredTemp; 
-
-
 
 char lcd_buffer[6];    // LCD display buffer
 
@@ -80,11 +77,8 @@ char lcd_buffer[6];    // LCD display buffer
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-
-
-
-
-//static void EXTILine14_Config(void); // configure the exti line4, for exterrnal button, WHICH BUTTON?
+void TIM4_Config(void);
+void TIM4_OC_Config(void);
 
 
 /* Private functions ---------------------------------------------------------*/
@@ -120,8 +114,11 @@ int main(void)
 	BSP_LCD_GLASS_Init();
 	
 	BSP_JOY_Init(JOY_MODE_EXTI);  
-
 	
+	BSP_LCD_GLASS_DisplayString((uint8_t*)"LAB 4");
+
+	TIM4_Config();
+	TIM4_OC_Config();
  	
   while (1)
   {
@@ -248,6 +245,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef * htim) //see  stm32XXX_h
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef * htim){  //this is for TIM4_pwm
 	
 	__HAL_TIM_SET_COUNTER(htim, 0x0000);
+	BSP_LED_Toggle(LED4);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
@@ -256,6 +254,47 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 }
 
 
+void  TIM4_Config(void)
+{
+ 
+	
+	/* Compute the prescaler value to have TIM4 counter clock equal to 10 KHz */
+  Tim4_PrescalerValue = (uint16_t) (SystemCoreClock/ 10000) - 1;
+  
+  /* Set TIM4 instance */
+  Tim4_Handle.Instance = TIM4; 
+	Tim4_Handle.Init.Period = 10000; //WHAT TO CHANGE THIS TO?
+  Tim4_Handle.Init.Prescaler = Tim4_PrescalerValue;
+  Tim4_Handle.Init.ClockDivision = 0;
+  Tim4_Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
+	Tim4_Handle.Init.RepetitionCounter = 0;
+	
+	if (HAL_TIM_PWM_Init(&Tim4_Handle) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
+
+void  TIM4_OC_Config(void)
+{
+		Tim4_OCInitStructure.OCMode=TIM_OCMODE_PWM1;
+		Tim4_OCInitStructure.OCPolarity=TIM_OCPOLARITY_HIGH;
+		Tim4_OCInitStructure.OCFastMode=TIM_OCFAST_DISABLE;
+		Tim4_OCInitStructure.OCNPolarity=TIM_OCNPOLARITY_HIGH;
+		Tim4_OCInitStructure.OCNPolarity=TIM_OCNIDLESTATE_RESET;
+		Tim4_OCInitStructure.OCIdleState=TIM_OCIDLESTATE_RESET;
+		
+		Tim4_OCInitStructure.Pulse=(uint32_t)(666-1)*4; //this is for duty cycle
+	
+		HAL_TIM_PWM_Init(&Tim4_Handle); // if the TIM4 has not been set, then this line will call the callback function _MspInit() 
+													//in stm32f4xx_hal_msp.c to set up peripheral clock and NVIC.
+	
+		HAL_TIM_PWM_ConfigChannel(&Tim4_Handle, &Tim4_OCInitStructure, TIM_CHANNEL_1);
+	
+	 	HAL_TIM_PWM_Start(&Tim4_Handle, TIM_CHANNEL_1); 				
+		
+}
 
 static void Error_Handler(void)
 {

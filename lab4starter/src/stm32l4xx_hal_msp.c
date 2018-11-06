@@ -39,6 +39,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
+#include "main.h"
 
 /** @addtogroup STM32L4xx_HAL_Driver
   * @{
@@ -135,11 +136,18 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef *htim)
 
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
 {	
+	GPIO_InitTypeDef GPIO_InitStruct;
+	__HAL_RCC_TIM4_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
 
+	
+	GPIO_InitStruct.Pin=GPIO_PIN_6;
+	GPIO_InitStruct.Mode=GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull=GPIO_PULLUP;
+	GPIO_InitStruct.Speed=GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate=GPIO_AF2_TIM4;
 
- 
-
-
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 
