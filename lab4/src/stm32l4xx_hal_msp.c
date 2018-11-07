@@ -197,6 +197,9 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 	
 	HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn); 
+	
+	HAL_NVIC_SetPriority(ADC1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ADC1_IRQn);
 
 }
   

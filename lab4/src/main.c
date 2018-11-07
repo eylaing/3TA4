@@ -61,6 +61,7 @@ __IO HAL_StatusTypeDef Hal_status;  //HAL_ERROR, HAL_TIMEOUT, HAL_OK, of HAL_BUS
 
 ADC_HandleTypeDef    Adc_Handle;
 ADC_ChannelConfTypeDef sConfig;
+ADC_AnalogWDGConfTypeDef watchdog;
 
 
 TIM_HandleTypeDef    Tim3_Handle, Tim4_Handle;
@@ -79,14 +80,17 @@ double measuredTemp;
 
 char lcd_buffer[6];    // LCD display buffer
 
+enum state {setpoint = 0, monitor = 1, fan = 2};
+enum state currState;
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void Error_Handler(void);
 void ADC_Config(void);
+void Watchdog_Config(void);
 void TIM4_Config(void);
 void TIM4_OC_Config(void);
-
 
 
 //static void EXTILine14_Config(void); // configure the exti line4, for exterrnal button, WHICH BUTTON?
@@ -135,8 +139,12 @@ int main(void)
 	BSP_JOY_Init(JOY_MODE_EXTI);  
 	
 	ADC_Config();
+	Watchdog_Config();
 	TIM4_Config();
 	TIM4_OC_Config();
+	
+	currState = monitor;
+	
  	
   while (1)
   {
@@ -151,10 +159,18 @@ int main(void)
 		measuredTemp=(ADC1ConvertedValue)/30.0; //??
 		
 		
-		sprintf((char*)val,"%f",measuredTemp);
+		//sprintf((char*)val,"%f",measuredTemp);
+		//BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+		
+		sprintf((char*)val,"%d",ADC1ConvertedValue);
 		BSP_LCD_GLASS_DisplayString((uint8_t*)val);
 		BSP_LED_Toggle(LED5);
 		HAL_Delay(2000);
+		
+		
+		
+		
+
 		
 			
 	} //end of while 1
@@ -291,6 +307,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 
 void ADC_Config(void)
 {
+	
+
+	
+
 	Adc_Handle.Instance = ADC1;
 	if (HAL_ADC_DeInit(&Adc_Handle) != HAL_OK)
   {
@@ -336,6 +356,41 @@ void ADC_Config(void)
 }
 
 
+
+
+
+void Watchdog_Config(void)
+{
+	watchdog.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+  watchdog.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+  watchdog.Channel = ADC_CHANNEL_6;
+  watchdog.ITMode = ENABLE;
+  watchdog.HighThreshold = 0x384;
+  watchdog.LowThreshold = 0;
+	
+  if (HAL_ADC_AnalogWDGConfig(&Adc_Handle, &watchdog) != HAL_OK)
+  {
+    /* Channel Configuration Error */
+    Error_Handler();
+  }
+}
+
+
+
+
+void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef* hadc)
+{
+  /* Set variable to report analog watchdog out of window status to main      */
+  /* program.                                                                 */
+	BSP_LED_Toggle(LED4);
+	
+	if (currState == monitor)
+	{
+		currState = fan;
+	}
+	
+	
+}
 
 void  TIM4_Config(void)
 {
