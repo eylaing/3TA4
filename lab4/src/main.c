@@ -68,7 +68,7 @@ TIM_OC_InitTypeDef Tim3_OCInitStructure, Tim4_OCInitStructure;
 uint16_t Tim4_PrescalerValue;
 
 
-__IO uint32_t ADC1ConvertedValue=0;   //if declare it as 16t, it will not work.
+uint32_t ADC1ConvertedValue=0; 
 
 
 volatile double  setPoint=23.5;
@@ -140,14 +140,18 @@ int main(void)
  	
   while (1)
   {
+		BSP_LCD_GLASS_Clear();
 		BSP_LCD_GLASS_DisplayString((uint8_t*)"CHECK");
-		HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 1);
+		HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
 		HAL_ADC_Stop_DMA(&Adc_Handle);
 		BSP_LED_Toggle(LED5);
 		HAL_Delay(1000);
 		BSP_LCD_GLASS_Clear();
 		char val[6]="";
-		sprintf((char*)val,"%d",ADC1ConvertedValue);
+		measuredTemp=(ADC1ConvertedValue)/30.0; //??
+		
+		
+		sprintf((char*)val,"%f",measuredTemp);
 		BSP_LCD_GLASS_DisplayString((uint8_t*)val);
 		BSP_LED_Toggle(LED5);
 		HAL_Delay(2000);
@@ -244,7 +248,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   switch (GPIO_Pin) {
 			case GPIO_PIN_0: 		               //SELECT button					
-						
+						BSP_LCD_GLASS_DisplayString((uint8_t*)"SELECT");
+						HAL_Delay(3000);
 						break;	
 			case GPIO_PIN_1:     //left button						
 							
@@ -253,7 +258,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						
 							break;
 			case GPIO_PIN_3:    //up button							
-				
+				BSP_LCD_GLASS_DisplayString((uint8_t*)"UP");
+						HAL_Delay(3000);
 							break;
 			
 			case GPIO_PIN_5:    //down button						
@@ -314,7 +320,7 @@ void ADC_Config(void)
     Error_Handler();
   }
 	
-	sConfig.Channel      = ADC_CHANNEL_5;                /* Sampled channel number */
+	sConfig.Channel      = ADC_CHANNEL_6;                /* Sampled channel number */
   sConfig.Rank         = ADC_REGULAR_RANK_1;          /* Rank of sampled channel number ADCx_CHANNEL */
   sConfig.SamplingTime = ADC_SAMPLETIME_6CYCLES_5;    /* Sampling time (number of clock cycles unit) */
   sConfig.SingleDiff   = ADC_SINGLE_ENDED;            /* Single-ended input channel */
@@ -326,7 +332,7 @@ void ADC_Config(void)
     Error_Handler();
   }
 	
-	HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 1);
+	HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
 }
 
 
@@ -362,7 +368,7 @@ void  TIM4_OC_Config(void)
 		Tim4_OCInitStructure.OCNPolarity=TIM_OCNIDLESTATE_RESET;
 		Tim4_OCInitStructure.OCIdleState=TIM_OCIDLESTATE_RESET;
 		
-		Tim4_OCInitStructure.Pulse=(uint32_t)(666-1)*4; //this is for duty cycle
+		Tim4_OCInitStructure.Pulse=(uint32_t)(666-1)*2; //this is for duty cycle
 	
 		HAL_TIM_PWM_Init(&Tim4_Handle); // if the TIM4 has not been set, then this line will call the callback function _MspInit() 
 													//in stm32f4xx_hal_msp.c to set up peripheral clock and NVIC.

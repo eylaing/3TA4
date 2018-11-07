@@ -170,7 +170,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
   /*##-2- Configure peripheral GPIO ##########################################*/ 
 
  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
- GPIO_InitStruct.Pin  = ADC_CHANNEL_5;
+ GPIO_InitStruct.Pin  = ADC_CHANNEL_6;
  GPIO_InitStruct.Pull = GPIO_NOPULL;
  HAL_GPIO_Init(GPIOA,&GPIO_InitStruct);
 
