@@ -148,32 +148,37 @@ int main(void)
  	
   while (1)
   {
-		BSP_LCD_GLASS_Clear();
-		BSP_LCD_GLASS_DisplayString((uint8_t*)"CHECK");
-		HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
-		HAL_ADC_Stop_DMA(&Adc_Handle);
-		BSP_LED_Toggle(LED5);
-		HAL_Delay(1000);
-		BSP_LCD_GLASS_Clear();
-		char val[6]="";
-		measuredTemp=(ADC1ConvertedValue)/30.0; //??
-		
-		
-		//sprintf((char*)val,"%f",measuredTemp);
-		//BSP_LCD_GLASS_DisplayString((uint8_t*)val);
-		
-		sprintf((char*)val,"%d",ADC1ConvertedValue);
-		BSP_LCD_GLASS_DisplayString((uint8_t*)val);
-		BSP_LED_Toggle(LED5);
-		HAL_Delay(2000);
-		
-		
-		
-		
-
-		
+		switch (currState){
+			case monitor:
+				BSP_LCD_GLASS_Clear();
+				BSP_LCD_GLASS_DisplayString((uint8_t*)"CHECK");
+				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
+				HAL_ADC_Stop_DMA(&Adc_Handle);
+				BSP_LED_Toggle(LED5);
+				HAL_Delay(1000);
+				BSP_LCD_GLASS_Clear();
+				char val[6]="";
+				measuredTemp=(ADC1ConvertedValue)/30.0; //??
+				
+				
+				//sprintf((char*)val,"%f",measuredTemp);
+				//BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+				
+				sprintf((char*)val,"%d",ADC1ConvertedValue);
+				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+				BSP_LED_Toggle(LED5);
+				HAL_Delay(2000);
+				break;
 			
-	} //end of while 1
+			case setpoint:
+				
+				break;
+			case fan:
+		
+				break;
+		}
+			
+	}
 
 }
 
@@ -303,6 +308,10 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef * htim){  //this is for
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 {
 		BSP_LED_Toggle(LED4);
+		if (currState==monitor)
+		{
+			currState=fan;
+		}
 }
 
 void ADC_Config(void)
