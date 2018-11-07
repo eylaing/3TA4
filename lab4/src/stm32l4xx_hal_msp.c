@@ -146,10 +146,6 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
 void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 {
   GPIO_InitTypeDef          GPIO_InitStruct;
-	
-	
-	
-	
   static DMA_HandleTypeDef  hdma_adc;
  
   /*##-1- Enable peripherals and GPIO Clocks #################################*/
@@ -161,7 +157,8 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
 
 	/* Enable DMA2 clock */
-  __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*##-2- Configure peripheral GPIO ##########################################*/ 
 
