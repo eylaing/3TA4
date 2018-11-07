@@ -136,6 +136,8 @@ int main(void)
   while (1)
   {
 		BSP_LCD_GLASS_DisplayString((uint8_t*)"CHECK");
+		HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 1);
+		HAL_ADC_Stop_DMA(&Adc_Handle);
 		BSP_LED_Toggle(LED5);
 		HAL_Delay(1000);
 		BSP_LCD_GLASS_Clear();
@@ -271,18 +273,18 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef * htim){  //this is for
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 {
-		BSP_LED_On(LED5);
+		BSP_LED_Toggle(LED4);
 }
 
 void ADC_Config(void)
 {
-		  if (HAL_ADC_DeInit(&Adc_Handle) != HAL_OK)
+	Adc_Handle.Instance = ADC1;
+	if (HAL_ADC_DeInit(&Adc_Handle) != HAL_OK)
   {
     /* ADC de-initialization Error */
     Error_Handler();
   }
 	
-	Adc_Handle.Instance = ADC1;
 	Adc_Handle.Init.ClockPrescaler 				= ADC_CLOCK_ASYNC_DIV1;
 	Adc_Handle.Init.Resolution            = ADC_RESOLUTION_12B;             /* 12-bit resolution for converted data */
   Adc_Handle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;           /* Right-alignment for converted data */

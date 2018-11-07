@@ -157,13 +157,13 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
 
 	/* Enable DMA2 clock */
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*##-2- Configure peripheral GPIO ##########################################*/ 
 
  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
- GPIO_InitStruct.Pin  = ADC_CHANNEL_1;
+ GPIO_InitStruct.Pin  = ADC_CHANNEL_5;
  GPIO_InitStruct.Pull = GPIO_NOPULL;
  HAL_GPIO_Init(GPIOA,&GPIO_InitStruct);
 
@@ -171,7 +171,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
   //##-3- Configure the DMA  
 	//RM0351, table 45 & 46 on page 342 shows: ADC mapped to DMA1/channel 1  or to DMA2/channel 3.
 	
-  hdma_adc.Instance                 = DMA1_Channel1;
+  hdma_adc.Instance                 = DMA2_Channel3;
   hdma_adc.Init.Request             = DMA_REQUEST_0;
   hdma_adc.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   hdma_adc.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -188,8 +188,8 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
   //##-4- Configure the NVIC for DMA 
 	
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn); 
+	HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn); 
 
 }
   
