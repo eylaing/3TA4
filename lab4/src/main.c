@@ -72,13 +72,15 @@ uint16_t Tim4_PrescalerValue;
 uint32_t ADC1ConvertedValue=0; 
 
 
-volatile double  set_pnt=23.5;
+volatile double  set_pnt=23.0;
 
 double measuredTemp; 
 
 
 
 char lcd_buffer[6];    // LCD display buffer
+char val[6];		//buffer to hold temperature
+char set[6];		//buffer to hold setpoint
 
 enum state {setpoint = 0, monitor = 1, fan = 2};
 enum state currState;
@@ -89,8 +91,10 @@ static void SystemClock_Config(void);
 static void Error_Handler(void);
 void ADC_Config(void);
 void Watchdog_Config(void);
+void Watchdog_ChangeSP(double sp);
 void TIM4_Config(void);
-void TIM4_OC_Config(void);
+void TIM4_OC_Config(uint32_t dutyCycle);
+void TurnOffFan(void);
 
 //static void EXTILine14_Config(void); // configure the exti line4, for exterrnal button, WHICH BUTTON?
 
@@ -113,58 +117,100 @@ int main(void)
          handled in milliseconds basis.
        - Set NVIC Group Priority to 4 
        - Low Level Initialization
-     */
-
-	//HAL_ADC_MspInit(&Adc_Handle);
-	
+     */	
 	
 	HAL_Init();
 
 	SystemClock_Config();   
 	
-	
-
 	HAL_InitTick(0x0000); // set systick's priority to the highest.
 
-	
 	BSP_LED_Init(LED4);
 	BSP_LED_Init(LED5);
-
-
 	BSP_LCD_GLASS_Init();
-	
-		BSP_LCD_GLASS_DisplayString((uint8_t*)"LAB4");
 
 	BSP_JOY_Init(JOY_MODE_EXTI);  
 	
 	ADC_Config();
 	Watchdog_Config();
 	TIM4_Config();
-	TIM4_OC_Config();
 	
 	currState = monitor;
-	char val[6]="";
-	//sprintf((char*)val, "%d", ADC1ConvertedValue);
-	char val2[6]="";
-	//sprintf((char*)val2, "%f", set_pnt);
-	BSP_LCD_GLASS_Clear();
+
+	HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
+	HAL_ADC_Stop_DMA(&Adc_Handle);
+	measuredTemp=ADC1ConvertedValue/30.0-8.0;
+	sprintf((char*)val, "%f", measuredTemp);
+	
+	BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+	HAL_Delay(2000);
+	
+	
  	
   while (1)
   {
 		switch (currState){
 			case monitor:
-					sprintf((char*)val, "%d", ADC1ConvertedValue);
-					BSP_LCD_GLASS_DisplayString((uint8_t*)val);
-				break;
+				BSP_LCD_GLASS_Clear();
+				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
+				HAL_ADC_Stop_DMA(&Adc_Handle);
+				sprintf((char*)val, "%f", ADC1ConvertedValue/30.0-8.0);
+				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+				HAL_Delay(1000);
+				BSP_LCD_GLASS_Clear();
+				BSP_LCD_GLASS_DisplayString((uint8_t*)"WATCH");
+				HAL_Delay(1000);
+					break;
+			
 			
 			case setpoint:
-				sprintf((char*)val2, "%f", set_pnt);
-				BSP_LCD_GLASS_DisplayString((uint8_t*)val2);
-
-				
-				break;
+				sprintf((char*)set, "%f", set_pnt);
+				BSP_LCD_GLASS_DisplayString((uint8_t*)set);
+					break;
+			
+			
 			case fan:
-		
+				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
+				HAL_ADC_Stop_DMA(&Adc_Handle);
+				measuredTemp=(ADC1ConvertedValue)/30.0-8.0;
+				sprintf((char*)val, "%f", measuredTemp);
+				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
+				
+				if (measuredTemp-set_pnt<0)
+				{
+					BSP_LCD_GLASS_Clear();
+					BSP_LCD_GLASS_DisplayString((uint8_t*)"FANOFF");
+					TurnOffFan();
+					HAL_Delay(1000);
+					currState=monitor; //no longer above setpoint
+				}
+				else if (measuredTemp-set_pnt<1)
+				{
+					BSP_LCD_GLASS_Clear();
+					BSP_LCD_GLASS_DisplayString((uint8_t*)"LVL1");
+					TIM4_OC_Config(6); //17% power
+					HAL_Delay(1000);
+				}
+				else if (measuredTemp-set_pnt<2)
+				{
+					BSP_LCD_GLASS_Clear();
+					BSP_LCD_GLASS_DisplayString((uint8_t*)"LVL2");
+					TIM4_OC_Config(3); //33% power
+					HAL_Delay(1000);
+				}
+				else if (measuredTemp-set_pnt<4)
+				{
+					BSP_LCD_GLASS_Clear();
+					BSP_LCD_GLASS_DisplayString((uint8_t*)"LVL3");
+					TIM4_OC_Config(2); //50% power
+					HAL_Delay(1000);
+				}
+				else if (measuredTemp-set_pnt>=4)
+				{
+					BSP_LCD_GLASS_Clear();
+					BSP_LCD_GLASS_DisplayString((uint8_t*)"LVL4");
+					TIM4_OC_Config(1); //100% power
+					HAL_Delay(1000);				}
 				break;
 		}
 			
@@ -258,26 +304,28 @@ void SystemClock_Config(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   switch (GPIO_Pin) {
-			case GPIO_PIN_0:
-				if (currState == monitor){
+			case GPIO_PIN_0: //select
+				if (currState == monitor || currState==fan){
 							BSP_LCD_GLASS_Clear();
 							currState = setpoint;
+							BSP_LCD_GLASS_DisplayString((uint8_t*)"SETPT");
+							HAL_Delay(1000);
 				}
-					else{
-							BSP_LCD_GLASS_Clear();
+				else{
 							currState = monitor;
-					}		
+				}		
 						break;
 			case GPIO_PIN_1:     //left button						
 							
 							break;
-			case GPIO_PIN_2:    //right button						  to play again.
+			case GPIO_PIN_2:    //right button	
 						
 							break;
 			case GPIO_PIN_3:    //up button		
 							if(currState == setpoint){
 							BSP_LCD_GLASS_Clear();
 							set_pnt = set_pnt + 0.5;
+							Watchdog_ChangeSP(set_pnt);
 							break;
 							}
 			
@@ -285,6 +333,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						if(currState == setpoint){
 							BSP_LCD_GLASS_Clear();
 							set_pnt = set_pnt - 0.5;
+							Watchdog_ChangeSP(set_pnt);
 							break;
 							}
 							break;
@@ -309,19 +358,15 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef * htim){  //this is for
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* AdcHandle)
 {
-		BSP_LED_Toggle(LED4);
 		if (currState==monitor)
 		{
 			currState=fan;
+			BSP_LED_On(LED4);
 		}
 }
 
 void ADC_Config(void)
 {
-	
-
-	
-
 	Adc_Handle.Instance = ADC1;
 	if (HAL_ADC_DeInit(&Adc_Handle) != HAL_OK)
   {
@@ -386,8 +431,17 @@ void Watchdog_Config(void)
   }
 }
 
-
-
+void Watchdog_ChangeSP(double sp)
+{
+	int threshold = (sp + 8)*30;
+	
+	watchdog.HighThreshold = threshold;
+	if (HAL_ADC_AnalogWDGConfig(&Adc_Handle, &watchdog) != HAL_OK)
+  {
+    /* Channel Configuration Error */
+    Error_Handler();
+  }
+}
 
 void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef* hadc)
 {
@@ -405,14 +459,12 @@ void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef* hadc)
 
 void  TIM4_Config(void)
 {
- 
-	
-	/* Compute the prescaler value to have TIM4 counter clock equal to 10 KHz */
-  Tim4_PrescalerValue = (uint16_t) (SystemCoreClock/ 10000) - 1;
+	/* Compute the prescaler value to have TIM4 counter clock equal to 50 KHz */
+  Tim4_PrescalerValue = (uint16_t) (SystemCoreClock/ 50000) - 1;
   
   /* Set TIM4 instance */
   Tim4_Handle.Instance = TIM4; 
-	Tim4_Handle.Init.Period = 10000; //WHAT TO CHANGE THIS TO?
+	Tim4_Handle.Init.Period = 199;
   Tim4_Handle.Init.Prescaler = Tim4_PrescalerValue;
   Tim4_Handle.Init.ClockDivision = 0;
   Tim4_Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -425,7 +477,7 @@ void  TIM4_Config(void)
 }
 
 
-void  TIM4_OC_Config(void)
+void  TIM4_OC_Config(uint32_t dutyCycle)
 {
 		Tim4_OCInitStructure.OCMode=TIM_OCMODE_PWM1;
 		Tim4_OCInitStructure.OCPolarity=TIM_OCPOLARITY_HIGH;
@@ -434,7 +486,7 @@ void  TIM4_OC_Config(void)
 		Tim4_OCInitStructure.OCNPolarity=TIM_OCNIDLESTATE_RESET;
 		Tim4_OCInitStructure.OCIdleState=TIM_OCIDLESTATE_RESET;
 		
-		Tim4_OCInitStructure.Pulse=(uint32_t)(666-1)*2; //this is for duty cycle
+		Tim4_OCInitStructure.Pulse=(uint32_t)(200)/dutyCycle; //this is for duty cycle
 	
 		HAL_TIM_PWM_Init(&Tim4_Handle); // if the TIM4 has not been set, then this line will call the callback function _MspInit() 
 													//in stm32f4xx_hal_msp.c to set up peripheral clock and NVIC.
@@ -444,6 +496,18 @@ void  TIM4_OC_Config(void)
 	 	HAL_TIM_PWM_Start(&Tim4_Handle, TIM_CHANNEL_1); 				
 		
 }
+
+void TurnOffFan(void)
+{
+	Tim4_OCInitStructure.Pulse=(uint32_t)(0);
+	HAL_TIM_PWM_Init(&Tim4_Handle); // if the TIM4 has not been set, then this line will call the callback function _MspInit() 
+													//in stm32f4xx_hal_msp.c to set up peripheral clock and NVIC.
+	
+	HAL_TIM_PWM_ConfigChannel(&Tim4_Handle, &Tim4_OCInitStructure, TIM_CHANNEL_1);
+	
+	HAL_TIM_PWM_Start(&Tim4_Handle, TIM_CHANNEL_1); 
+}
+
 static void Error_Handler(void)
 {
   /* Turn LED4 on */
@@ -452,9 +516,6 @@ static void Error_Handler(void)
   {
   }
 }
-
-
-
 
 
 #ifdef  USE_FULL_ASSERT
