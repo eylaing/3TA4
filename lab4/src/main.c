@@ -72,7 +72,7 @@ uint16_t Tim4_PrescalerValue;
 uint32_t ADC1ConvertedValue=0; 
 
 
-volatile double  setPoint=23.5;
+volatile double  set_pnt=23.5;
 
 double measuredTemp; 
 
@@ -91,7 +91,6 @@ void ADC_Config(void);
 void Watchdog_Config(void);
 void TIM4_Config(void);
 void TIM4_OC_Config(void);
-
 
 //static void EXTILine14_Config(void); // configure the exti line4, for exterrnal button, WHICH BUTTON?
 
@@ -144,33 +143,24 @@ int main(void)
 	TIM4_OC_Config();
 	
 	currState = monitor;
-	
+	char val[6]="";
+	//sprintf((char*)val, "%d", ADC1ConvertedValue);
+	char val2[6]="";
+	//sprintf((char*)val2, "%f", set_pnt);
+	BSP_LCD_GLASS_Clear();
  	
   while (1)
   {
 		switch (currState){
 			case monitor:
-				BSP_LCD_GLASS_Clear();
-				BSP_LCD_GLASS_DisplayString((uint8_t*)"CHECK");
-				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
-				HAL_ADC_Stop_DMA(&Adc_Handle);
-				BSP_LED_Toggle(LED5);
-				HAL_Delay(1000);
-				BSP_LCD_GLASS_Clear();
-				char val[6]="";
-				measuredTemp=(ADC1ConvertedValue)/30.0; //??
-				
-				
-				//sprintf((char*)val,"%f",measuredTemp);
-				//BSP_LCD_GLASS_DisplayString((uint8_t*)val);
-				
-				sprintf((char*)val,"%d",ADC1ConvertedValue);
-				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
-				BSP_LED_Toggle(LED5);
-				HAL_Delay(2000);
+					sprintf((char*)val, "%d", ADC1ConvertedValue);
+					BSP_LCD_GLASS_DisplayString((uint8_t*)val);
 				break;
 			
 			case setpoint:
+				sprintf((char*)val2, "%f", set_pnt);
+				BSP_LCD_GLASS_DisplayString((uint8_t*)val2);
+
 				
 				break;
 			case fan:
@@ -268,23 +258,35 @@ void SystemClock_Config(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   switch (GPIO_Pin) {
-			case GPIO_PIN_0: 		               //SELECT button					
-						BSP_LCD_GLASS_DisplayString((uint8_t*)"SELECT");
-						HAL_Delay(3000);
-						break;	
+			case GPIO_PIN_0:
+				if (currState == monitor){
+							BSP_LCD_GLASS_Clear();
+							currState = setpoint;
+				}
+					else{
+							BSP_LCD_GLASS_Clear();
+							currState = monitor;
+					}		
+						break;
 			case GPIO_PIN_1:     //left button						
 							
 							break;
 			case GPIO_PIN_2:    //right button						  to play again.
 						
 							break;
-			case GPIO_PIN_3:    //up button							
-				BSP_LCD_GLASS_DisplayString((uint8_t*)"UP");
-						HAL_Delay(3000);
+			case GPIO_PIN_3:    //up button		
+							if(currState == setpoint){
+							BSP_LCD_GLASS_Clear();
+							set_pnt = set_pnt + 0.5;
 							break;
+							}
 			
 			case GPIO_PIN_5:    //down button						
-					
+						if(currState == setpoint){
+							BSP_LCD_GLASS_Clear();
+							set_pnt = set_pnt - 0.5;
+							break;
+							}
 							break;
 			
 			default://
