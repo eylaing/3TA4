@@ -84,6 +84,7 @@ char set[6];		//buffer to hold setpoint
 
 enum state {setpoint = 0, monitor = 1, fan = 2};
 enum state currState;
+enum state prevState;
 
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,6 +96,9 @@ void Watchdog_ChangeSP(double sp);
 void TIM4_Config(void);
 void TIM4_OC_Config(uint32_t dutyCycle);
 void TurnOffFan(void);
+double GetTemp(uint32_t ADC1ConvertedValue);
+int GetThreshold(volatile double SP);
+
 
 //static void EXTILine14_Config(void); // configure the exti line4, for exterrnal button, WHICH BUTTON?
 
@@ -139,7 +143,7 @@ int main(void)
 
 	HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
 	HAL_ADC_Stop_DMA(&Adc_Handle);
-	measuredTemp=ADC1ConvertedValue/30.0-8.0;
+	measuredTemp=GetTemp(ADC1ConvertedValue);
 	sprintf((char*)val, "%f", measuredTemp);
 	
 	BSP_LCD_GLASS_DisplayString((uint8_t*)val);
@@ -154,7 +158,8 @@ int main(void)
 				BSP_LCD_GLASS_Clear();
 				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
 				HAL_ADC_Stop_DMA(&Adc_Handle);
-				sprintf((char*)val, "%f", ADC1ConvertedValue/30.0-8.0);
+				measuredTemp=GetTemp(ADC1ConvertedValue);
+				sprintf((char*)val, "%f", measuredTemp);
 				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
 				HAL_Delay(1000);
 				BSP_LCD_GLASS_Clear();
@@ -166,13 +171,14 @@ int main(void)
 			case setpoint:
 				sprintf((char*)set, "%f", set_pnt);
 				BSP_LCD_GLASS_DisplayString((uint8_t*)set);
+				
 					break;
 			
 			
 			case fan:
 				HAL_ADC_Start_DMA(&Adc_Handle, &ADC1ConvertedValue, 4);
 				HAL_ADC_Stop_DMA(&Adc_Handle);
-				measuredTemp=(ADC1ConvertedValue)/30.0-8.0;
+				measuredTemp=GetTemp(ADC1ConvertedValue);
 				sprintf((char*)val, "%f", measuredTemp);
 				BSP_LCD_GLASS_DisplayString((uint8_t*)val);
 				
@@ -307,12 +313,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			case GPIO_PIN_0: //select
 				if (currState == monitor || currState==fan){
 							BSP_LCD_GLASS_Clear();
+							prevState = currState;
 							currState = setpoint;
 							BSP_LCD_GLASS_DisplayString((uint8_t*)"SETPT");
 							HAL_Delay(1000);
 				}
 				else{
-							currState = monitor;
+							currState = prevState;
 				}		
 						break;
 			case GPIO_PIN_1:     //left button						
@@ -421,7 +428,7 @@ void Watchdog_Config(void)
   watchdog.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
   watchdog.Channel = ADC_CHANNEL_6;
   watchdog.ITMode = ENABLE;
-  watchdog.HighThreshold = 0x384;
+  watchdog.HighThreshold = GetThreshold(set_pnt);
   watchdog.LowThreshold = 0;
 	
   if (HAL_ADC_AnalogWDGConfig(&Adc_Handle, &watchdog) != HAL_OK)
@@ -433,7 +440,9 @@ void Watchdog_Config(void)
 
 void Watchdog_ChangeSP(double sp)
 {
-	int threshold = (sp + 8)*30;
+	//convert threshold to a value the ADC watchdog will actually understand
+	//see 'GetTemp()' for exaplanation of numbers
+	int threshold = GetThreshold(sp);
 	
 	watchdog.HighThreshold = threshold;
 	if (HAL_ADC_AnalogWDGConfig(&Adc_Handle, &watchdog) != HAL_OK)
@@ -447,8 +456,6 @@ void HAL_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef* hadc)
 {
   /* Set variable to report analog watchdog out of window status to main      */
   /* program.                                                                 */
-	BSP_LED_Toggle(LED4);
-	
 	if (currState == monitor)
 	{
 		currState = fan;
@@ -507,6 +514,22 @@ void TurnOffFan(void)
 	
 	HAL_TIM_PWM_Start(&Tim4_Handle, TIM_CHANNEL_1); 
 }
+
+double GetTemp(uint32_t ADC1ConvertedValue)
+{
+	//TF is 3 for circuit - divide input by 3 to get temperature sensor output
+	//Sensor is going up by 10mV for each degree - divide by .01 to get V
+	//Resoltion is 12 bits - 4095 values
+		//On 3V division, each output is 3/4095 volts, so multiply by 3/4095
+	return (ADC1ConvertedValue)*(3.0/4095.0)/(3.0*.01);
+}
+
+int GetThreshold(volatile double SP)
+{
+	int threshold = SP/((3.0/4095.0)/(3.0*.01));
+	return threshold;
+}
+
 
 static void Error_Handler(void)
 {
